@@ -1,0 +1,167 @@
+# WPS JSON 字段提取加载项
+
+通过 `=JSON.GET(A2,"user.name")` 提取单元格 JSON 字段。解析过程在本机运行，不调用外部接口。
+
+## 当前状态
+
+1. 本项目按 WPS 官方加载项接口制作，运行部分使用普通 JavaScript，无第三方运行依赖。
+2. 已识别本机安装的是 Mac 版 WPS 12.1.28496。能否实际注册并计算公式，需要在本机 WPS 内启用后确认。
+3. 制作代码和执行构建不会安装加载项，也不会修改 WPS 配置。执行下文的 `npm run wps:debug` 才会注册调试加载项并尝试启动 WPS。
+4. 下文提供 debug 调试加载和 Mac 手动离线安装两种方式。debug 方式依赖本地服务；离线方式成功加载后无需常驻服务。尚未制作自动安装包，两种方式均需在本机 WPS 中验证。
+
+## 已完成的验证
+
+1. 自行编写的 8 项验证全部通过，脚本语法、XML 与函数声明检查通过。
+2. dist 构建和临时 HTTP 加载、模拟宿主注册通过。
+3. 官方 wpsjs 2.2.3 已在本目录安装，依赖锁定文件已生成；调试模块可加载。
+4. 独立只读审查未发现需要修复的确定缺陷。真实 WPS 内的计算尚未验证。
+
+## 安装方式选择
+
+1. debug 方式：适合开发和调试，需要 Node.js 与官方 wpsjs 工具，使用时保持本机 HTTP 服务运行。
+2. 离线方式：适合日常使用，把运行文件复制到 WPS 插件目录并登记本地路径；成功加载后无需 Node.js、npm 或本机 HTTP 服务。准备构建文件时仍需 Node.js。
+3. 以下操作以本机 Mac 为例。不要同时启用同名的 debug 和离线记录，切换方式见后文。
+
+## 方式一：debug 调试加载
+
+1. 安装 Node.js 18 或更高版本。已安装则跳过。
+2. 在终端执行：
+
+   ```sh
+   cd /Users/liujinsuo/Desktop/code/wps-json-get
+   npm install --ignore-scripts
+   npm run wps:debug
+   ```
+
+   `wpsjs` 固定为官方 2.2.3 版本，是开发调试工具；首次安装需要联网下载。JSON 内容不发送给该工具的服务器。
+3. 等待工具启动 WPS，打开一个空白表格。首次出现加载项信任提示时，核对名称为 `wps-json-get` 后按提示操作。
+4. 如果 WPS 此前正在运行，先保存文档，再完全退出 WPS 后重新打开；调试终端保持运行。
+5. 在功能区找到“JSON 工具”，点击“检查函数状态”。“已提交注册”只表示接口调用完成，还需按下面的例子确认公式实际可用。
+6. 如果提示未提供自定义函数接口，说明当前 Mac 客户端的这项能力未开放或未正确加载；仅凭版本号不能确认兼容。
+
+## 方式二：离线安装（Mac）
+
+1. 保存所有文档并完全退出 WPS。如果正在运行 debug，在对应终端按 Control+C 停止服务。
+2. 在终端生成加载项运行文件：
+
+   ```sh
+   cd /Users/liujinsuo/Desktop/code/wps-json-get
+   npm run build
+   ```
+
+   本项目构建不需要先执行 `npm install`，只需已安装 Node.js 18 或更高版本。也可使用 `node scripts/build.cjs`。
+3. 在访达按 Command+Shift+G，打开以下目录；目录不存在时先创建：
+
+   ```text
+   /Users/liujinsuo/Library/Containers/com.kingsoft.wpsoffice.mac/Data/.kingsoft/wps/jsaddons
+   ```
+
+   在该目录中创建 `wps-json-get_1.0.0` 文件夹，把项目 `dist/` 里面的全部内容复制进去。不要再套一层 dist 目录。最终结构为：
+
+   ```text
+   jsaddons/
+     publish.xml
+     wps-json-get_1.0.0/
+       index.html
+       main.js
+       manifest.xml
+       functions.json
+       ribbon.xml
+       js/
+         functions.js
+   ```
+
+4. 如果插件目录已有 `publish.xml`，先复制一份备份。使用纯文本编辑器编辑它，不要保存成富文本格式。
+5. 登记本地加载项目录。如果没有 `publish.xml`，创建它并写入以下完整内容：
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <jsplugins>
+     <jsplugin
+       name="wps-json-get"
+       type="et"
+       url="wps-json-get_1.0.0"
+       version="1.0.0"
+       enable="enable_dev"
+       install="null"
+       customDomain=""/>
+   </jsplugins>
+   ```
+
+   如果已有 `publish.xml`，只把上面的 `<jsplugin .../>` 记录加入现有 `<jsplugins>` 节点内，保留其他加载项和配置。已经存在同名 `wps-json-get` 的离线记录时更新该条记录；存在同名 `<jspluginonline>` 调试记录时移除它，避免重复加载。
+
+   `url` 是相对于 jsaddons 的文件夹名，必须与复制的 `wps-json-get_1.0.0` 完全一致。它不是 `http://127.0.0.1:3893/`，也不是 dist 所在的项目路径。后续更改版本号时，同步调整文件夹名与 `version`。
+6. 保持 debug 服务关闭，重新打开 WPS 表格。若出现加载项信任提示，核对名称 `wps-json-get` 后按提示操作；在“JSON 工具”中点击“检查函数状态”。
+7. 在空白单元格输入：
+
+   ```excel
+   =JSON.GET("[10,20,30]","[0]")
+   ```
+
+   预期返回数值 `10`。完全退出并重新打开 WPS 后再次计算成功，才能确认本机离线加载有效；此后无需启动 `npm run wps:debug`。Mac 客户端仍可能存在加载项或自定义函数兼容性差异，本项目尚未完成真实 WPS 的这项验证。
+
+## 两种方式切换
+
+1. debug 切换到离线：保存文档并退出 WPS，停止 debug 服务，按离线步骤复制文件并用本地 `<jsplugin>` 记录替换同名 `<jspluginonline>` 记录。
+2. 离线切换到 debug：保存文档并退出 WPS，备份 `publish.xml`，移除同名离线 `<jsplugin>` 记录，再运行 `npm run wps:debug`，由工具登记在线调试记录。保留其他加载项配置。
+3. 离线安装后修改项目源码不会自动更新已安装文件；重新构建并复制到离线目录，然后完全退出并重启 WPS。
+
+## 使用示例
+
+1. 把以下内容作为普通文本粘贴到 A2：
+
+   ```json
+   {"uid":123,"user":{"name":"张三"},"items":[{"id":8}],"active":false,"nothing":null,"id":"9223372036854775807"}
+   ```
+
+2. 在其他单元格输入公式：
+
+   | 公式 | 预期结果 |
+   | --- | --- |
+   | `=JSON.GET(A2,"uid")` | 数值 123 |
+   | `=JSON.GET(A2,"user.name")` | 文本 张三 |
+   | `=JSON.GET(A2,"items[0].id")` | 数值 8 |
+   | `=JSON.GET(A2,"active")` | 布尔 FALSE |
+   | `=JSON.GET(A2,"nothing")` | 空文本 |
+   | `=JSON.GET(A2,"user")` | 文本 `{"name":"张三"}` |
+   | `=JSON.GET(A2,"id")` | 保留完整长编号的文本 |
+
+3. 向下填充公式即可解析后续行；源单元格变化时由 WPS 的公式计算机制重新求值。
+4. 数组下标从 0 开始。根数组使用 `[0].id`；空路径 `""` 返回整个 JSON，根值为 null 时返回空文本。
+5. 字段名含点号或方括号时，可以把路径 `["a.b"]["x[y]"]` 写在 B1，再使用 `=JSON.GET(A2,B1)`。不支持通配符、筛选表达式或完整 JSONPath。
+
+## 返回值和错误
+
+1. 数字、文本、布尔值保留对应类型；对象、数组返回紧凑 JSON 文本；null 返回空文本。
+2. JSON 无效、路径无效或字段缺失时，返回以 `#JSON!` 开头的说明文本。它不是 WPS 原生错误值，`IFERROR` 不会捕获它。
+3. 超过 JavaScript 安全整数范围的数字会拒绝解析，避免先舍入再显示。请把长 ID 写成 JSON 字符串，例如 `{"id":"9223372036854775807"}`。
+4. JavaScript 能精确表示的 16 位整数会作为文本返回，避免进入表格后被截成 15 位。小数遵循 JavaScript 与表格的浮点数精度限制。
+5. WPS 单元格文本长度、公式计算和客户端接口仍受其自身限制。本项目不绕过这些限制。
+6. 把含此公式的文件发给别人时，对方也需要安装兼容加载项才能重新计算；需要普通结果时可复制后选择性粘贴为值。
+
+## 本地验证和构建
+
+1. 不安装任何依赖也能运行本项目自行编写的验证和构建：
+
+   ```sh
+   node --test tests/json-get.test.cjs
+   node scripts/build.cjs
+   ```
+
+2. 构建产物位于 `dist/`，只包含 6 个加载项运行文件。构建本身不安装、不注册、不启动 WPS。
+3. 验证涵盖嵌套路径、错误反馈、原型字段隔离、大整数保护、函数声明和注册回调；模拟宿主通过不代表真实 Mac WPS 公式已验证。
+
+## 排查和移除
+
+1. `#NAME?`：先确认 WPS 表格已加载“JSON 工具”，再检查函数状态。debug 方式需要调试服务正在运行；离线方式检查本地目录、publish.xml 的同名记录和文件结构。配置变化后需要完全退出并重启 WPS。
+2. 端口 3893 被占用：停止占用该端口的旧调试进程，或手动执行 `npx wpsjs debug --port 3894`。
+3. 停止本次调试：在调试终端按 Control+C；这不等于删除已注册的加载项配置。
+4. 需要移除时，在 WPS 的加载项管理入口找到 `wps-json-get` 并禁用或删除。入口因版本而异，勿清空其他加载项或整个配置目录。
+
+## 官方参考
+
+1. [WPS 加载项自定义函数](https://open.wps.cn/documents/app-integration-dev/wps365/client/wpsoffice/wps-integration-mode/wps-addin-development/wps-addin-custome-function)
+2. [WPS 加载项开发说明](https://open.wps.cn/documents/app-integration-dev/wps365/client/wpsoffice/wps-integration-mode/wps-addin-development/wps-addin-development-instructions)
+3. [官方 wpsjs 工具](https://www.npmjs.com/package/wpsjs)
+
+4. [Mac 离线加载方式的 WPS 技术支持答复](https://bbs.wps.cn/topic/54791)

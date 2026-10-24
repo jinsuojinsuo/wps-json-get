@@ -1,0 +1,23 @@
+{
+  "functions": [
+    {
+      "name": "GET",
+      "description": "从 JSON 文本中提取字段，支持 user.name、items[0].id 和双引号括号字段名。",
+      "parameters": [
+        {
+          "name": "text",
+          "description": "包含 JSON 文本的单元格或字符串",
+          "type": "string"
+        },
+        {
+          "name": "path",
+          "description": "字段路径；数组从 0 开始；空路径返回整个 JSON",
+          "type": "string"
+        }
+      ],
+      "result": {
+        "type": "any"
+      }
+    }
+  ]
+}

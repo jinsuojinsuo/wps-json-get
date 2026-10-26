@@ -1,0 +1,31 @@
+name: Windows installer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - install.ps1
+      - tests/install-windows.Tests.ps1
+      - .github/workflows/windows-installer.yml
+      - package.json
+      - index.html
+      - main.js
+      - manifest.xml
+      - functions.json
+      - ribbon.xml
+      - js/functions.js
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Verify Windows PowerShell 5.1 installation
+        shell: powershell
+        run: .\tests\install-windows.Tests.ps1 -Download

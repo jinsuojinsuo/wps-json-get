@@ -6,8 +6,8 @@
 
 1. 本项目按 WPS 官方加载项接口制作，运行部分使用普通 JavaScript，无第三方运行依赖。
 2. 已识别本机安装的是 Mac 版 WPS 12.1.28496。能否实际注册并计算公式，需要在本机 WPS 内启用后确认。
-3. 制作代码和执行构建不会安装加载项。执行 `install.sh` 会复制运行文件并登记离线加载项；`npm run wps:debug` 则会登记调试加载项并尝试启动 WPS。
-4. 下文提供 Mac 一键安装、debug 调试加载和手动离线安装三种方式。一键安装不依赖 Git、Node.js、npm、Python、编译器或开发工具；离线加载成功后无需常驻服务。真实 WPS 中的公式兼容性仍需验证。
+3. 制作代码和执行构建不会安装加载项。执行 `install.sh`（Mac）或 `install.ps1`（Windows）会复制运行文件并登记离线加载项；`npm run wps:debug` 则会登记调试加载项并尝试启动 WPS。
+4. 下文提供 Windows / Mac 一键安装、debug 调试加载和手动离线安装。一键安装不依赖 Git、Node.js、npm、Python、编译器或开发工具；离线加载成功后无需常驻服务。真实 WPS 中的公式兼容性仍需验证。
 
 ## 已完成的验证
 
@@ -18,10 +18,43 @@
 
 ## 安装方式选择
 
-1. 一键安装：推荐日常使用，只需已安装 WPS 的 Mac；直接从 GitHub 下载运行文件，不需要 Git 或任何编译环境。
+1. 一键安装：推荐日常使用，支持 Windows 10/11 和 Mac，需先安装 WPS；直接从 GitHub 下载运行文件，不需要 Git 或任何编译环境。
 2. debug 方式：适合开发和调试，需要 Node.js 与官方 wpsjs 工具，使用时保持本机 HTTP 服务运行。
 3. 手动离线安装：自行复制运行文件和编辑配置，适合需要手工控制安装过程的情况。
-4. 以下操作以本机 Mac 为例。不要同时启用同名的 debug 和离线记录，切换方式见后文。
+4. 按系统选择下面的一键安装步骤。debug 和手动安装示例以 Mac 为例；不要同时启用同名的 debug 和离线记录，切换方式见后文。
+
+## 方式一：一键安装（推荐，Windows）
+
+1. 支持 Windows 10/11 自带的 Windows PowerShell 5.1，不需要管理员权限。先保存文档并完全退出 WPS；如果正在 debug，也要停止调试服务。脚本不会强制关闭 WPS。
+2. 从开始菜单打开“Windows PowerShell”，复制执行下面这一行：
+
+   ```powershell
+   & ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/jinsuojinsuo/wps-json-get/main/install.ps1').Content))
+   ```
+
+   首次下载需要联网访问 GitHub。使用系统自带的 PowerShell、ZIP 解压和 XML 处理能力，直接安装现成运行文件；不需要 Git、Node.js、npm、Python 或编译环境，也不会修改执行策略。
+3. 完全离线安装：预先下载[完整项目 ZIP](https://github.com/jinsuojinsuo/wps-json-get/archive/refs/heads/main.zip)，解压并进入包含 `install.ps1`、`package.json` 和 `index.html` 的项目文件夹。在该文件夹打开 PowerShell，执行：
+
+   ```powershell
+   & ([scriptblock]::Create((Get-Content -LiteralPath .\install.ps1 -Raw -Encoding UTF8)))
+   ```
+
+   这条命令直接读取本地脚本和运行文件，不联网、不修改执行策略，也不需要安装开发工具。允许运行本地脚本的环境也可直接执行 `.\install.ps1`。仅下载单个脚本时，仍需联网获取其余运行文件。
+4. 默认安装目录：
+
+   ```text
+   %APPDATA%\kingsoft\wps\jsaddons\wps-json-get_1.0.0
+   ```
+
+   脚本自动读取项目版本，合并同目录的 `publish.xml`，替换本项目原有的在线调试或离线记录，保留其他加载项。原配置和同版本旧目录备份到 `jsaddons\.wps-json-get-backups\` 下，脚本会打印本次备份位置。
+5. 配置损坏时拒绝覆盖；最终配置替换失败时会尝试恢复同版本旧目录。需要手动恢复时，先退出 WPS，再按打印的备份路径恢复原配置和目录。如果之后安装了其他加载项，应只恢复本项目记录，避免覆盖后来的配置。
+6. 重新打开 WPS 表格，输入：
+
+   ```excel
+   =JSON.GET("[10,20,30]","[0]")
+   ```
+
+   预期返回 `10`。完全退出并重启 WPS 后再次计算成功，才能确认当前客户端离线加载有效。之后无需保留 PowerShell 窗口或启动任何服务；真实 Windows WPS 的公式兼容性仍需实际验证。
 
 ## 方式一：一键安装（推荐，Mac）
 
@@ -131,9 +164,9 @@
 
 ## 两种方式切换
 
-1. debug 切换到离线：保存文档并退出 WPS，停止 debug 服务，然后运行 `install.sh`；脚本会替换同名在线调试记录。也可按手动离线步骤操作。
+1. debug 切换到离线：保存文档并退出 WPS，停止 debug 服务，然后运行对应系统的一键安装命令；脚本会替换同名在线调试记录。也可按手动离线步骤操作。
 2. 离线切换到 debug：保存文档并退出 WPS，备份 `publish.xml`，移除同名离线 `<jsplugin>` 记录，再运行 `npm run wps:debug`，由工具登记在线调试记录。保留其他加载项配置。
-3. 离线安装后修改项目源码不会自动更新已安装文件；重新构建并复制到离线目录，然后完全退出并重启 WPS。
+3. 离线安装后修改项目源码不会自动更新已安装文件；重新运行一键安装脚本，或重新构建并复制到离线目录，然后完全退出并重启 WPS。
 
 ## 使用示例
 
@@ -180,7 +213,14 @@
 
 2. 构建产物位于 `dist/`，只包含 6 个加载项运行文件。构建本身不安装、不注册、不启动 WPS。
 3. 验证涵盖嵌套路径、错误反馈、原型字段隔离、大整数保护、函数声明、注册回调和安装配置合并；模拟宿主和临时目录安装通过不代表真实 Mac WPS 公式已验证。
-4. 安装器验证使用 `WPS_JSON_GET_ADDONS_DIR` 指定临时目录，避免改动实际 WPS 配置；日常用户不需要设置此变量。运行验证需要开发用 Node.js，安装端不需要。
+4. 安装器验证使用 `WPS_JSON_GET_ADDONS_DIR` 指定临时目录，避免改动实际 WPS 配置；日常用户不需要设置此变量。Mac 验证需要开发用 Node.js，安装端不需要。
+5. Windows 安装器验证使用 PowerShell，不需要 Node.js。在项目目录执行：
+
+   ```powershell
+   .\tests\install-windows.Tests.ps1
+   ```
+
+   增加 `-Download` 会实际从 GitHub 下载 ZIP。验证覆盖空 PATH 安装、本地离线命令、重复安装与备份、损坏配置保护；Windows 上额外验证只读配置导致最终替换失败时的恢复。GitHub Actions 使用 Windows PowerShell 5.1 运行这组验证，不启动真实 WPS。
 
 ## 排查和移除
 

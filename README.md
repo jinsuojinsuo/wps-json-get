@@ -29,7 +29,7 @@
 2. 从开始菜单打开“Windows PowerShell”，复制执行下面这一行：
 
    ```powershell
-   & ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/jinsuojinsuo/wps-json-get/main/install.ps1').Content))
+   & ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/jinsuojinsuo/wps-json-get/main/install.ps1').Content.TrimStart([char]0xFEFF)))
    ```
 
    首次下载需要联网访问 GitHub。使用系统自带的 PowerShell、ZIP 解压和 XML 处理能力，直接安装现成运行文件；不需要 Git、Node.js、npm、Python 或编译环境，也不会修改执行策略。

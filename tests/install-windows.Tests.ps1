@@ -33,11 +33,18 @@ function Read-TestXml([string]$File) {
     return ,$xml
 }
 
-function Assert-Runtime([string]$Target) {
+function Assert-Runtime([string]$Target, [switch]$NormalizeLineEndings) {
     foreach ($file in $runtimeFiles) {
         $actual = [IO.File]::ReadAllBytes((Join-Path (Join-Path $Target $folderName) $file))
         $expected = [IO.File]::ReadAllBytes((Join-Path $projectRoot $file))
-        Assert-Equal ([Convert]::ToBase64String($actual)) ([Convert]::ToBase64String($expected)) "运行文件不一致：$file"
+        if ($NormalizeLineEndings) {
+            # Windows Git 检出可能转为 CRLF，GitHub ZIP 保留仓库的 LF。
+            $actual = [Text.Encoding]::UTF8.GetBytes([Text.Encoding]::UTF8.GetString($actual).Replace("`r`n", "`n"))
+            $expected = [Text.Encoding]::UTF8.GetBytes([Text.Encoding]::UTF8.GetString($expected).Replace("`r`n", "`n"))
+        }
+        if ([Convert]::ToBase64String($actual) -cne [Convert]::ToBase64String($expected)) {
+            throw "运行文件不一致：$file"
+        }
     }
 }
 
@@ -137,9 +144,20 @@ try {
         $standalone = Join-Path $testRoot 'standalone.ps1'
         [IO.File]::Copy($installer, $standalone)
         & $standalone
-        Assert-Runtime $target
+        Assert-Runtime $target -NormalizeLineEndings
         $passed++
         Write-Host 'PASS：单独脚本从 GitHub 下载并安装，无需编译'
+
+        $target = New-TestTarget 'online-command'
+        Push-Location -LiteralPath $testRoot
+        try {
+            & ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/jinsuojinsuo/wps-json-get/main/install.ps1').Content.TrimStart([char]0xFEFF)))
+        } finally {
+            Pop-Location
+        }
+        Assert-Runtime $target -NormalizeLineEndings
+        $passed++
+        Write-Host 'PASS：README 在线命令可处理下载脚本的编码标记'
     }
     Write-Host "通过 $passed 项安装验证；全部在临时目录执行。"
 } finally {

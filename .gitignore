@@ -3,3 +3,4 @@ dist/
 .debugTemp/
 wps-addon-build/
 wps-addon-publish/
+.idea
